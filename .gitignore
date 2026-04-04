@@ -3,7 +3,10 @@ TechnicalAssignmentforInternshipProgram2 (2).pdf
 
 ._*
 .DS_Store
+.env
 
 claude_code_telemetry (1)/output/
 venv/
 .idea/
+data/
+__pycache__/
