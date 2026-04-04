@@ -3,24 +3,24 @@ COMPOSE ?= docker compose
 ALEMBIC ?= $(PYTHON) -m alembic
 LOAD_SCRIPT = scripts/load_data.py
 
-.PHONY: install db-up db-down db-restart db-ps db-logs migrate load reload reset-db adminer verify
+.PHONY: install db-up db-down db-restart db-ps db-logs migrate load reload reset-db adminer analytics-preview verify
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt
 
-db-up:
+up:
 	$(COMPOSE) up -d
 
-db-down:
+down:
 	$(COMPOSE) down
 
-db-restart:
+restart:
 	$(COMPOSE) restart
 
-db-ps:
+ps:
 	$(COMPOSE) ps
 
-db-logs:
+logs:
 	$(COMPOSE) logs --tail=100
 
 migrate:
@@ -43,6 +43,9 @@ adminer:
 	@echo "Username: $${POSTGRES_USER:-claude}"
 	@echo "Password: $${POSTGRES_PASSWORD:-pass}"
 	@echo "Database: $${POSTGRES_DB:-claude_code_analytics}"
+
+analytics-preview:
+	$(PYTHON) scripts/preview_analytics.py
 
 verify:
 	$(PYTHON) -m compileall src scripts alembic
