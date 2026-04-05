@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -89,7 +91,7 @@ def render_hero() -> None:
 
 
 def render_overview(payload: dict[str, object]) -> None:
-    overview = payload["overview"].to_dict()
+    overview = payload["overview"]
     cards = [
         ("Employees", f"{overview['total_employees']:,}"),
         ("Active Users", f"{overview['active_users']:,}"),
@@ -316,30 +318,36 @@ def render_reliability_sessions(payload: dict[str, object]) -> None:
 def main() -> None:
     inject_styles()
     render_hero()
-    payload = get_dashboard_payload()
 
     with st.sidebar:
         st.markdown("### Dashboard Scope")
-        st.caption("Data source: PostgreSQL analytics backend loaded from synthetic Claude Code telemetry.")
-        st.markdown(
-            "- Overview KPIs\n"
-            "- Adoption segmentation\n"
-            "- Model and tool behavior\n"
-            "- Reliability patterns\n"
-            "- Session highlights"
+        st.caption("Data source: Analytics API over PostgreSQL telemetry backend.")
+        st.caption(f"API base URL: {os.getenv('API_BASE_URL', 'http://127.0.0.1:8000/api/v1')}")
+        selected_section = st.radio(
+            "Navigate",
+            ["Overview", "Adoption", "Models & Tools", "Reliability & Sessions"],
+            index=0,
         )
+        if st.button("Refresh Data"):
+            st.cache_data.clear()
+            st.rerun()
 
-    overview_tab, adoption_tab, models_tab, reliability_tab = st.tabs(
-        ["Overview", "Adoption", "Models & Tools", "Reliability & Sessions"]
-    )
+    try:
+        payload = get_dashboard_payload()
+    except Exception as exc:  # noqa: BLE001
+        st.error(
+            "Failed to load dashboard data from API. Start it with `make api` and check the API base URL."
+        )
+        st.code(str(exc))
+        return
 
-    with overview_tab:
+    if selected_section == "Overview":
         render_overview(payload)
-    with adoption_tab:
+    elif selected_section == "Adoption":
         render_adoption(payload)
-    with models_tab:
+    elif selected_section == "Models & Tools":
         render_models_tools(payload)
-    with reliability_tab:
+    else:
         render_reliability_sessions(payload)
 
 

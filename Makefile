@@ -3,7 +3,7 @@ COMPOSE ?= docker compose
 ALEMBIC ?= $(PYTHON) -m alembic
 LOAD_SCRIPT = scripts/load_data.py
 
-.PHONY: install up down restart ps logs db-up db-down db-restart db-ps db-logs migrate load reload reset-db adminer analytics-preview dashboard verify
+.PHONY: install up down restart ps logs db-up db-down db-restart db-ps db-logs migrate load reload reset-db adminer analytics-preview api dashboard verify
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -57,6 +57,9 @@ adminer:
 
 analytics-preview:
 	$(PYTHON) scripts/preview_analytics.py
+
+api:
+	$(PYTHON) -m uvicorn claude_analytics.api.app:app --host 0.0.0.0 --port 8000
 
 dashboard:
 	$(PYTHON) -m streamlit run app/dashboard.py
