@@ -58,6 +58,15 @@ def inject_styles() -> None:
             padding: 1rem 1rem 0.8rem 1rem;
             box-shadow: 0 8px 30px rgba(35, 44, 52, 0.06);
         }
+        [data-testid="stMetricLabel"] {
+            color: #2f3a3f;
+        }
+        [data-testid="stMetricValue"] {
+            color: #10272d;
+        }
+        [data-testid="stMetricDelta"] {
+            color: #1c7c74;
+        }
         .section-title {
             font-size: 1.15rem;
             font-weight: 700;
@@ -321,8 +330,10 @@ def main() -> None:
 
     with st.sidebar:
         st.markdown("### Dashboard Scope")
-        st.caption("Data source: Analytics API over PostgreSQL telemetry backend.")
-        st.caption(f"API base URL: {os.getenv('API_BASE_URL', 'http://127.0.0.1:8000/api/v1')}")
+        st.caption("Data source: Analytics API.")
+        debug_ui = os.getenv("DEBUG_UI", "").strip().lower() in {"1", "true", "yes", "on"}
+        if debug_ui:
+            st.caption(f"API base URL: {os.getenv('API_BASE_URL', 'http://127.0.0.1:8000/api/v1')}")
         selected_section = st.radio(
             "Navigate",
             ["Overview", "Adoption", "Models & Tools", "Reliability & Sessions"],
