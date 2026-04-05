@@ -104,3 +104,45 @@ class SessionHighlight:
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class PredictivePoint:
+    date: str
+    actual: float | None
+    predicted: float
+    split: str
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PredictiveAnomaly:
+    date: str
+    actual: float
+    predicted: float
+    z_score: float
+    abs_error: float
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class PredictiveForecast:
+    metric: str
+    metric_label: str
+    horizon_days: int
+    backtest_days: int
+    train_days: int
+    mae: float
+    mape_pct: float
+    trend_slope_per_day: float
+    last_actual_value: float
+    last_predicted_value: float
+    points: list[PredictivePoint]
+    anomalies: list[PredictiveAnomaly]
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)

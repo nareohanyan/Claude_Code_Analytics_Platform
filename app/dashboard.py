@@ -4,9 +4,10 @@ import os
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
-from claude_analytics.dashboard.data import load_dashboard_data
+from claude_analytics.dashboard.data import load_dashboard_data, load_predictive_data
 
 
 st.set_page_config(
@@ -83,6 +84,11 @@ def inject_styles() -> None:
 @st.cache_data(show_spinner=False, ttl=300)
 def get_dashboard_payload() -> dict[str, object]:
     return load_dashboard_data()
+
+
+@st.cache_data(show_spinner=False, ttl=300)
+def get_predictive_payload(metric: str, horizon_days: int, backtest_days: int) -> dict[str, object]:
+    return load_predictive_data(metric, horizon_days=horizon_days, backtest_days=backtest_days)
 
 
 def render_hero() -> None:
@@ -324,6 +330,104 @@ def render_reliability_sessions(payload: dict[str, object]) -> None:
         st.dataframe(sessions_df, use_container_width=True, hide_index=True)
 
 
+def render_predictive() -> None:
+    st.markdown('<div class="section-title">Predictive Analytics</div>', unsafe_allow_html=True)
+    st.caption("Model: linear trend + weekday seasonality, with holdout backtest and residual anomaly detection.")
+
+    metrics = {
+        "Daily API Cost (USD)": "total_cost_usd",
+        "Daily API Requests": "api_requests",
+        "Daily Tokens": "total_tokens",
+        "Daily API Errors": "api_errors",
+    }
+
+    controls_left, controls_mid, controls_right = st.columns((1.6, 1, 1))
+    with controls_left:
+        selected_metric_label = st.selectbox("Forecast Metric", list(metrics), index=0)
+    with controls_mid:
+        horizon_days = st.slider("Forecast Horizon (days)", min_value=3, max_value=30, value=7)
+    with controls_right:
+        backtest_days = st.slider("Backtest Window (days)", min_value=3, max_value=30, value=7)
+
+    payload = get_predictive_payload(
+        metrics[selected_metric_label],
+        horizon_days=horizon_days,
+        backtest_days=backtest_days,
+    )
+    points_df: pd.DataFrame = payload["points"].copy()
+    anomalies_df: pd.DataFrame = payload["anomalies"].copy()
+
+    if points_df.empty:
+        st.warning("No predictive points available.")
+        return
+
+    points_df["date"] = pd.to_datetime(points_df["date"])
+    actual_df = points_df[points_df["actual"].notna()]
+    forecast_start = points_df.loc[points_df["split"] == "forecast", "date"]
+
+    chart = go.Figure()
+    chart.add_trace(
+        go.Scatter(
+            x=actual_df["date"],
+            y=actual_df["actual"],
+            mode="lines+markers",
+            name="Actual",
+            line={"color": "#1c7c74", "width": 2.5},
+        )
+    )
+    chart.add_trace(
+        go.Scatter(
+            x=points_df["date"],
+            y=points_df["predicted"],
+            mode="lines+markers",
+            name="Predicted",
+            line={"color": "#cf6a32", "width": 2.3, "dash": "dash"},
+        )
+    )
+    if not forecast_start.empty:
+        chart.add_vrect(
+            x0=forecast_start.iloc[0],
+            x1=points_df["date"].max(),
+            fillcolor="rgba(207,106,50,0.12)",
+            line_width=0,
+            annotation_text="Forecast Window",
+            annotation_position="top left",
+        )
+    chart.update_layout(
+        margin=dict(l=10, r=10, t=16, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.75)",
+        xaxis_title="Date",
+        yaxis_title=payload["metric_label"],
+        legend_title_text="",
+    )
+    st.plotly_chart(chart, use_container_width=True)
+
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+    metric_col1.metric("Backtest MAE", f"{payload['mae']:,.2f}")
+    metric_col2.metric("Backtest MAPE", f"{payload['mape_pct']:.2f}%")
+    metric_col3.metric("Trend / day", f"{payload['trend_slope_per_day']:,.4f}")
+    metric_col4.metric("Last Forecast", f"{payload['last_predicted_value']:,.2f}")
+
+    st.markdown("#### Anomaly Candidates (|z| >= 2)")
+    if anomalies_df.empty:
+        st.caption("No significant anomalies detected for this metric.")
+    else:
+        st.dataframe(
+            anomalies_df.rename(
+                columns={
+                    "date": "Date",
+                    "actual": "Actual",
+                    "predicted": "Predicted",
+                    "z_score": "Z-Score",
+                    "abs_error": "Absolute Error",
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
 def main() -> None:
     inject_styles()
     render_hero()
@@ -336,30 +440,39 @@ def main() -> None:
             st.caption(f"API base URL: {os.getenv('API_BASE_URL', 'http://127.0.0.1:8000/api/v1')}")
         selected_section = st.radio(
             "Navigate",
-            ["Overview", "Adoption", "Models & Tools", "Reliability & Sessions"],
+            ["Overview", "Adoption", "Models & Tools", "Reliability & Sessions", "Predictive Analytics"],
             index=0,
         )
         if st.button("Refresh Data"):
             st.cache_data.clear()
             st.rerun()
 
+    if selected_section == "Predictive Analytics":
+        try:
+            render_predictive()
+        except Exception as exc:  # noqa: BLE001
+            st.error(
+                "Failed to load predictive data from API. Start it with `make api` and check the API base URL."
+            )
+            st.code(str(exc))
+        return
+
     try:
         payload = get_dashboard_payload()
+        if selected_section == "Overview":
+            render_overview(payload)
+        elif selected_section == "Adoption":
+            render_adoption(payload)
+        elif selected_section == "Models & Tools":
+            render_models_tools(payload)
+        else:
+            render_reliability_sessions(payload)
     except Exception as exc:  # noqa: BLE001
         st.error(
             "Failed to load dashboard data from API. Start it with `make api` and check the API base URL."
         )
         st.code(str(exc))
         return
-
-    if selected_section == "Overview":
-        render_overview(payload)
-    elif selected_section == "Adoption":
-        render_adoption(payload)
-    elif selected_section == "Models & Tools":
-        render_models_tools(payload)
-    else:
-        render_reliability_sessions(payload)
 
 
 if __name__ == "__main__":

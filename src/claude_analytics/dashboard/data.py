@@ -43,3 +43,33 @@ def load_dashboard_data() -> dict[str, object]:
         "peak_hours": _frame(payload["peak_hours"]),
         "top_sessions": _frame(payload["top_sessions"]),
     }
+
+
+def load_predictive_data(
+    metric: str,
+    *,
+    horizon_days: int = 7,
+    backtest_days: int = 7,
+) -> dict[str, object]:
+    payload = _request_json(
+        "/predictive/forecast",
+        params={
+            "metric": metric,
+            "horizon_days": horizon_days,
+            "backtest_days": backtest_days,
+        },
+    )
+    return {
+        "metric": payload["metric"],
+        "metric_label": payload["metric_label"],
+        "horizon_days": payload["horizon_days"],
+        "backtest_days": payload["backtest_days"],
+        "train_days": payload["train_days"],
+        "mae": payload["mae"],
+        "mape_pct": payload["mape_pct"],
+        "trend_slope_per_day": payload["trend_slope_per_day"],
+        "last_actual_value": payload["last_actual_value"],
+        "last_predicted_value": payload["last_predicted_value"],
+        "points": _frame(payload["points"]),
+        "anomalies": _frame(payload["anomalies"]),
+    }

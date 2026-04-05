@@ -16,6 +16,13 @@ class AdoptionDimension(str, Enum):
     os = "os"
 
 
+class PredictiveMetric(str, Enum):
+    total_cost_usd = "total_cost_usd"
+    api_requests = "api_requests"
+    total_tokens = "total_tokens"
+    api_errors = "api_errors"
+
+
 router = APIRouter(tags=["analytics"])
 
 
@@ -73,6 +80,20 @@ def get_top_sessions(
 ) -> list[dict[str, object]]:
     rows = service.get_top_sessions(limit=limit)
     return [row.to_dict() for row in rows]
+
+
+@router.get("/predictive/forecast")
+def get_predictive_forecast(
+    metric: PredictiveMetric = Query(default=PredictiveMetric.total_cost_usd),
+    horizon_days: int = Query(default=7, ge=1, le=30),
+    backtest_days: int = Query(default=7, ge=1, le=30),
+    service: AnalyticsService = Depends(get_analytics_service),
+) -> dict[str, object]:
+    return service.get_predictive_forecast(
+        metric=metric.value,
+        horizon_days=horizon_days,
+        backtest_days=backtest_days,
+    ).to_dict()
 
 
 @router.get("/dashboard")
