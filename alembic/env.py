@@ -1,21 +1,13 @@
 from __future__ import annotations
 
 from logging.config import fileConfig
-from pathlib import Path
-import sys
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = PROJECT_ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-from claude_analytics.config import AppConfig  # noqa: E402
-from claude_analytics.db.base import Base  # noqa: E402
-from claude_analytics.db import models  # noqa: F401,E402
+from claude_analytics.config import AppConfig
+from claude_analytics.db.base import Base
+from claude_analytics.db import models  # noqa: F401
 
 
 config = context.config
